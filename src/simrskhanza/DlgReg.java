@@ -86,7 +86,10 @@ import bridging.ICareRiwayatPerawatan;
 import bridging.ICareRiwayatPerawatanFKTP;
 import bridging.INACBGPerawatanCorona;
 import bridging.PilihanBridgingAsuransi;
+import fungsi.koneksiDBWA;
 import inventory.DlgCopyResep;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import javax.swing.SwingUtilities;
 import javax.swing.SwingWorker;
 import rekammedis.RMDataResumePasien;
@@ -258,6 +261,7 @@ import surat.SuratPulangAtasPermintaanSendiri;
 import surat.SuratSakit;
 import surat.SuratSakitPihak2;
 import surat.SuratTidakHamil;
+import wa.WhatsappKirimFonnte;
 /**
  *
  * @author dosen
@@ -267,17 +271,18 @@ public final class DlgReg extends javax.swing.JDialog {
     private sekuel Sequel=new sekuel();
     private validasi Valid=new validasi();
     private Connection koneksi=koneksiDB.condb();
+    private Connection koneksiwa;
     public  DlgPasien pasien=new DlgPasien(null,false);
     public  DlgCariDokter dokter=new DlgCariDokter(null,false);
     public  DlgCariDokter2 dokter2=new DlgCariDokter2(null,false);
     private DlgCariPoli poli=new DlgCariPoli(null,false);
     private DlgCariPoli2 poli2=new DlgCariPoli2(null,false);
     public  DlgRujukMasuk rujukmasuk=new DlgRujukMasuk(null,false);
-    private PreparedStatement ps,ps3,pscaripiutang;
+    private PreparedStatement ps,ps3,pscaripiutang, psWa;
     private ResultSet rs;
     private int pilihan=0,i=0,kuota=0,jmlparsial=0;
     private boolean ceksukses=false;
-    private String nosisrute="",aktifkanparsial="no",BASENOREG="",TANGGALMUNDUR="yes",
+    private String tanggaljamkirim="", notifwapasien = "", nosisrute="",aktifkanparsial="no",BASENOREG="",finger="",TANGGALMUNDUR="yes",no_sep = "",
             URUTNOREG="",status="Baru",order="reg_periksa.tgl_registrasi,reg_periksa.jam_reg desc",alamatperujuk="-",aktifjadwal="",IPPRINTERTRACER="",umur="0",sttsumur="Th",terbitsep="",
             validasiregistrasi="No",validasicatatan="No",norawatdipilih="",normdipilih="";
     private SimpleDateFormat dateformat = new SimpleDateFormat("yyyy/MM/dd");
@@ -15991,6 +15996,7 @@ private void MnLaporanRekapKunjunganBulananPoliActionPerformed(java.awt.event.Ac
     private widget.Button BtnSeek5;
     private widget.Button BtnSimpan;
     private widget.Button BtnUnit;
+    private widget.Button BtnWa;
     private widget.CekBox ChkInput;
     private widget.CekBox ChkJln;
     private widget.CekBox ChkTracker;
@@ -18169,6 +18175,21 @@ private void MnLaporanRekapKunjunganBulananPoliActionPerformed(java.awt.event.Ac
         MnRMSkrining.setName("MnRMSkrining"); 
         MnRMSkrining.setPreferredSize(new java.awt.Dimension(200, 26));
         
+        BtnWa = new widget.Button();
+        BtnWa.setIcon(new javax.swing.ImageIcon(getClass().getResource("/picture/wa.png"))); // NOI18N
+        BtnWa.setMnemonic('7');
+        BtnWa.setToolTipText("Alt+7");
+        BtnWa.setName("BtnWa"); // NOI18N
+        BtnWa.setPreferredSize(new java.awt.Dimension(28, 23));
+        BtnWa.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                BtnWaActionPerformed(evt);
+            }
+        });
+        
+        FormInput.add(BtnWa);
+        BtnWa.setBounds(220, 12, 23, 23);
+        
         MnRMSkriningRisikoKanker = new javax.swing.JMenu();
         MnRMSkriningRisikoKanker.setBackground(new java.awt.Color(255, 255, 254));
         MnRMSkriningRisikoKanker.setForeground(new java.awt.Color(50, 50, 50));
@@ -18439,5 +18460,120 @@ private void MnLaporanRekapKunjunganBulananPoliActionPerformed(java.awt.event.Ac
             tabMode.setValueAt(kdpnj.getText(),tbPetugas.getSelectedRow(),22);
             emptTeks();
         }
+    }
+    
+    private void BtnWaActionPerformed(java.awt.event.ActionEvent evt) {                                      
+         if(TPasien.getText().trim().equals("")&&TPasien.getText().trim().equals("")){
+            JOptionPane.showMessageDialog(null,"Maaf, Silahkan anda pilih dulu data pasien...!!!");
+            TCari.requestFocus();
+        }else{
+            this.setCursor(Cursor.getPredefinedCursor(Cursor.WAIT_CURSOR));
+            WhatsappKirimFonnte kirim=new WhatsappKirimFonnte(null,false); 
+            kirim.setNoRm(TNoRM.getText(),TNoReg.getText(),TPoli.getText(),TDokter.getText(),DTPReg.getDate());
+            kirim.setSize(720,330);
+            kirim.setLocationRelativeTo(internalFrame1);
+            kirim.setVisible(true);
+            this.setCursor(Cursor.getDefaultCursor());
+        }
+    } 
+    
+    private void NotifWaBuktiRegister() {
+        String tgl_lahir = Sequel.cariIsi("select DATE_FORMAT(tgl_lahir,'%d-%m-%Y')as tgl_lahir from pasien where no_rkm_medis = '" + TNoRM.getText() + "'");
+        String jk = Sequel.cariIsi("select jk from pasien where no_rkm_medis = '" + TNoRM.getText() + "'");
+        String noTelpPasien = Sequel.cariIsi("select no_tlp from pasien where no_rkm_medis = '" + TNoRM.getText() + "'");
+
+        if (notifwapasien.equals("yes")) {
+            koneksiwa = koneksiDBWA.condb();
+            String pesan = "============================"
+                    + "\n0xf0 0x9f 0x8f 0xa5" + akses.getnamars()
+                    + "\n0xF0 0x9F 0x91 0x8B Halo! 0xF0 0x9F 0x98 0x8A" + akses.getkontakrs()
+                    + "\n============================"
+                    + "\n0xF0 0x9F 0x93 0x84 BUKTI REGISTER PENDAFTARAN \n ANTRIAN POLI"
+                    + "\n0xF0 0x9F 0x93 0x85 Tanggal : " + DTPReg.getSelectedItem() + "  " + CmbJam.getSelectedItem() + ":" + CmbMenit.getSelectedItem() + ":" + CmbDetik.getSelectedItem()
+                    + "\n0xF0 0x9F 0x86 0x94 No Rawat : " + TNoRw.getText() + ""
+                    + "\n0xF0 0x9F 0x86 0x94 No RM : " + TNoRM.getText() + ""
+                    + "\n0xF0 0x9F 0x91 0xA4 Nama : " + TPasien.getText() + ""
+                    + "\n0xF0 0x9F 0x8E 0x82 Tanggal Lahir : " + tgl_lahir + ""
+                    + "\n0xE2 0x9A 0xA5 0x00 JK : " + jk + ""
+                    + "\n0xF0 0x9F 0x8F 0xA0 Alamat : " + TAlmt.getText() + ""
+                    + "\n0xF0 0x9F 0x8F 0xA5 Poli : " + TPoli.getText() + ""
+                    + "\n0xF0 0x9F 0x91 0xA8 Dokter : " + TDokter.getText() + ""
+                    + "\n0xF0 0x9F 0x92 0xB3 Cara bayar : " + nmpnj.getText() + ""
+                    + "\n0xF0 0x9F 0x94 0xA2 No Antri Poli : " + TNoReg.getText() + ""
+                    + "\n============================";
+            tanggaljamkirim = Valid.SetTgl(DTPReg.getSelectedItem() + "") + " " + CmbJam.getSelectedItem() + ":" + CmbMenit.getSelectedItem() + ":" + CmbDetik.getSelectedItem();
+            try {
+                String sql = "INSERT INTO wa_outbox (NOMOR, NOWA, PESAN, TANGGAL_JAM, STATUS, SOURCE, SENDER, SUCCESS, RESPONSE, REQUEST, TYPE, FILE) "
+                        + "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+                ps = koneksiwa.prepareStatement(sql);
+                ps.setLong(1, 0);  // NOMOR, jika AUTO_INCREMENT, bisa diubah atau dihilangkan sesuai kebutuhan
+                ps.setString(2, noTelpPasien + "@c.us");  // NOWA
+                ps.setString(3, pesan);          // PESAN
+                ps.setString(4, tanggaljamkirim);  // TANGGAL_JAM
+                ps.setString(5, "ANTRIAN");                 // STATUS
+                ps.setString(6, "KHANZA");                  // SOURCE
+                ps.setString(7, "NODEJS");                  // SENDER
+                ps.setString(8, "");                        // SUCCESS
+                ps.setString(9, "");                        // RESPONSE
+                ps.setString(10, "");                       // REQUEST
+                ps.setString(11, "TEXT");                   // TYPE
+                ps.setString(12, "");                       // FILE
+
+                ps.executeUpdate();
+            } catch (Exception e) {
+                System.out.println("Notif : " + e);
+            }
+        }
+    }
+
+    private void NotifWaPasienKabar() {
+        koneksiwa = koneksiDBWA.condb();
+        LocalDateTime tanggalKirim = LocalDateTime.now()
+                .plusDays(2) // Tambah 2 hari
+                .withHour(7) // Set jam ke 07
+                .withMinute(0) // Set menit ke 00
+                .withSecond(0); // Set detik ke 00
+
+        // Format ke String "yyyy-MM-dd HH:mm:ss"
+        String tanggaljamkirim = tanggalKirim.format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"));
+
+        String noTelp = Sequel.cariIsi("select no_tlp from pasien where no_rkm_medis='" + TNoRM.getText() + "' ");
+
+        // Membuat pesan WA
+        String pesan = "============================"
+                + "\n0xF0 0x9F 0x91 0x8B Assalamu'alaikum"
+                + "\nKami dari 0xF0 0x9F 0x8F 0xA5 " + akses.getnamars()
+                + "\n0xF0 0x9F 0x91 0x8D Ingin menanyakan kabar Anda."
+                + "\nBerdasarkan kunjungan beberapa hari lalu di 0xF0 0x9F 0x8F 0xA5 " + akses.getnamars()
+                + "\nAtas Nama: 0xF0 0x9F 0x91 0xA4 " + TPasien.getText()
+                + "\n0xF0 0x9F 0x8E 0x82 Bagaimana kondisi Anda saat ini?"
+                + "\n0xF0 0x9F 0x8C 0xBF Semoga lekas sembuh"
+                + "\n0xF0 0x9F 0x92 0xAC dan senantiasa dalam keadaan sehat."
+                + "\n0xF0 0x9F 0x99 0x8F Terima kasih."
+                + "\n============================";
+
+        try {
+            String sql = "INSERT INTO wa_outbox (NOMOR, NOWA, PESAN, TANGGAL_JAM, STATUS, SOURCE, SENDER, SUCCESS, RESPONSE, REQUEST, TYPE, FILE) "
+                    + "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+
+            psWa = koneksiwa.prepareStatement(sql);
+            psWa.setLong(1, 0);  // NOMOR, jika AUTO_INCREMENT, bisa diubah atau dihilangkan sesuai kebutuhan
+            psWa.setString(2, noTelp + "@c.us");  // NOWA
+            psWa.setString(3, pesan);          // PESAN
+            psWa.setString(4, tanggaljamkirim);  // TANGGAL_JAM
+            psWa.setString(5, "ANTRIAN");                 // STATUS
+            psWa.setString(6, "KHANZA");  // SOURCE
+            psWa.setString(7, "NODEJS");                  // SENDER
+            psWa.setString(8, "");                        // SUCCESS
+            psWa.setString(9, "");                        // RESPONSE
+            psWa.setString(10, "");                       // REQUEST
+            psWa.setString(11, "TEXT");                   // TYPE
+            psWa.setString(12, "");                       // FILE
+            psWa.executeUpdate();
+
+        } catch (Exception e) {
+            System.out.println("Error:" + e);
+        }
+
     }
 }
