@@ -1685,4 +1685,94 @@ public class koneksiDB {
         }
         return var;
     }
+    
+    public static boolean VALIDASIRESEPKRONIS() {
+        try (FileInputStream fs = new FileInputStream("setting/database.xml")) {
+            prop.loadFromXML(fs);
+            return prop.getProperty("VALIDASIRESEPKRONIS", "no").toLowerCase().trim().equals("yes");
+        } catch (IOException e) {
+            return false;
+        }
+    }
+    
+    public static String TAMPILANDEFAULTRIWAYATPASIEN() {
+        try (FileInputStream fs = new FileInputStream("setting/database.xml")) {
+            prop.loadFromXML(fs);
+            String value = prop.getProperty("TAMPILANDEFAULTRIWAYATPASIEN", "").toLowerCase().trim();
+            switch (value) {
+                case "2 riwayat terakhir":
+                case "5 riwayat terakhir":
+                case "semua riwayat":
+                case "per tanggal":
+                case "norawat":
+                    return value;
+                default:
+                    return "";
+            }
+        } catch (Exception e) {
+            return "";
+        }
+    }
+    
+    public static boolean RESTRIKSIRMKELAHIRANBAYI() {
+        try (FileInputStream fs = new FileInputStream("setting/database.xml")) {
+            prop.loadFromXML(fs);
+            return prop.getProperty("RESTRIKSIRMKELAHIRANBAYI", "no").toLowerCase().trim().equals("yes");
+        } catch (Exception e) {
+            return true;
+        }
+    }
+    
+    public static String URLKFAV2SATUSEHAT() {
+        try (FileInputStream fs = new FileInputStream("setting/database.xml")) {
+            prop.loadFromXML(fs);
+            return prop.getProperty("URLKFAV2SATUSEHAT", "");
+        } catch (Exception e) {
+            return "";
+        }
+    }
+    
+    public static String KOMPILASIBERKASGUNAKANRIWAYATPASIEN() {
+        try (FileInputStream fs = new FileInputStream("setting/database.xml")) {
+            prop.loadFromXML(fs);
+            return prop.getProperty("KOMPILASIBERKASGUNAKANRIWAYATPASIEN", "").trim().toLowerCase().replaceAll("\\s+", "");
+        } catch (Exception e) {
+            return "";
+        }
+    }
+    
+    public static String KOMPILASIBERKASAPLIKASIPDF() {
+        try (FileInputStream fs = new FileInputStream("setting/database.xml")) {
+            prop.loadFromXML(fs);
+            return prop.getProperty("KOMPILASIBERKASAPLIKASIPDF", "");
+        } catch (Exception e) {
+            return "";
+        }
+    }
+    
+    public static String KOMPILASIBERKASGUNAKANTANGGALEXPORT() {
+        try (FileInputStream fs = new FileInputStream("setting/database.xml")) {
+            prop.loadFromXML(fs);
+            return prop.getProperty("KOMPILASIBERKASGUNAKANTANGGALEXPORT", "").trim().toLowerCase().replaceAll("\\s+", "");
+        } catch (Exception e) {
+            return "";
+        }
+    }
+    
+    public static long KOMPILASIBERKASMAXMEMORY() {
+        try (FileInputStream fs = new FileInputStream("setting/database.xml")) {
+            prop.loadFromXML(fs);
+            return Long.parseLong(prop.getProperty("KOMPILASIBERKASMAXMEMORY", "200"));
+        } catch (Exception e) {
+            return 200;
+        }
+    }
+     public static boolean GUNAKANDIAGNOSAEKLAIM() {
+        try (FileInputStream fs = new FileInputStream("setting/database.xml")) {
+            prop.loadFromXML(fs);
+            return prop.getProperty("GUNAKANDIAGNOSAEKLAIM", "no").toLowerCase().trim().equals("yes");
+        } catch (Exception e) {
+            return false;
+        }
+    }
 }

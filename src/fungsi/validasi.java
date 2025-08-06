@@ -51,6 +51,13 @@ import widget.ComboBox;
 import widget.Tanggal;
 import widget.TextArea;
 import java.io.File;
+import java.nio.ByteBuffer;
+import java.nio.CharBuffer;
+import java.nio.charset.Charset;
+import java.nio.charset.CharsetDecoder;
+import java.nio.charset.CharsetEncoder;
+import java.nio.charset.CodingErrorAction;
+import javax.swing.text.JTextComponent;
 import widget.TextBox;
 /**
  *
@@ -77,9 +84,233 @@ public final class validasi {
     private String[] nomina={"","satu","dua","tiga","empat","lima","enam",
                          "tujuh","delapan","sembilan","sepuluh","sebelas"};
     
+     private String[] nominal2 = {
+        "nol","satu","dua","tiga","empat","lima","enam",
+        "tujuh","delapan","sembilan","sepuluh","sebelas"
+    };
+    
     public validasi(){
         super();
     };
+    
+    public String fingerSmc(String kodedokter, String tanggal) {
+        String finger = sek.cariIsiSmc("select sha1(sidikjari.sidikjari) from sidikjari join pegawai on pegawai.id = sidikjari.id where pegawai.nik = ?", kodedokter);
+        return String.format("Dikeluarkan di %s, Kabupaten/Kota %s\nDitandatangani secara elektronik oleh %s\nID %s\n%s",
+            akses.getnamars(), akses.getkabupatenrs(), sek.cariIsiSmc("select dokter.nm_dokter from dokter where dokter.kd_dokter = ?", kodedokter),
+            finger.isBlank() ? kodedokter : finger, tanggal
+        );
+    }
+    
+    public void autonomorSmc(JTextComponent component, String prefix, String table, int panjang, String pad) {
+        component.setText(sek.autonomorSmc(prefix, table, panjang, pad));
+    }
+    
+    public void autonomorSmc(JTextComponent component, String prefix, String separator, String table, String kolom, int panjang, String pad, String tanggal, int next) {
+        component.setText(sek.autonomorSmc(prefix, separator, table, kolom, panjang, pad, tanggal, next));
+    }
+    
+    public void autonomorSmc(JTextComponent component, String prefix, String separator, String table, String kolom, int panjang, String pad, Tanggal tanggal, int next) {
+        autonomorSmc(component, prefix, separator, table, kolom, panjang, pad, getTglSmc(tanggal), next);
+    }
+    
+    public void autonomorSmc(JTextComponent component, String prefix, String separator, String table, String kolom, int panjang, String pad, String tanggal) {
+        component.setText(sek.autonomorSmc(prefix, separator, table, kolom, panjang, pad, tanggal));
+    }
+    
+    public void autonomorSmc(JTextComponent component, String prefix, String separator, String table, String kolom, int panjang, String pad, Tanggal tanggal) {
+        autonomorSmc(component, prefix, separator, table, kolom, panjang, pad, getTglSmc(tanggal));
+    }
+    
+    public void autonomor1Smc(JTextComponent component, String prefix, String table, String kolom, int panjang, String pad, Tanggal tanggal) {
+        autonomorSmc(component, prefix, "", table, kolom, panjang, pad, getTglSmc(tanggal));
+    }
+    
+    public String getTglSmc(Tanggal tgl) {
+        return new SimpleDateFormat("yyyy-MM-dd").format(tgl.getDate());
+    }
+    
+    public String getJamSmc(ComboBox jam, ComboBox menit, ComboBox detik) {
+        return jam.getSelectedItem() + ":" + menit.getSelectedItem() + ":" + detik.getSelectedItem();
+    }
+    
+    public String getJamSmc(Tanggal tgl) {
+        return new SimpleDateFormat("HH:mm:ss").format(tgl.getDate());
+    }
+    
+    public String getTglJamSmc(Tanggal tgl, ComboBox jam, ComboBox menit, ComboBox detik) {
+        return getTglSmc(tgl) + " " + getJamSmc(jam, menit, detik);
+    }
+    
+    public String getTglJamSmc(Tanggal tgljam) {
+        return new SimpleDateFormat("yyyy-MM-dd HH:mm:ss").format(tgljam.getDate());
+    }
+    
+    public String setTglSmc(Date tgl) {
+        return new SimpleDateFormat("dd-MM-yyyy").format(tgl);
+    }
+    
+    public String setTglSmc(String tgl) {
+        return tgl.substring(8, 10) + "-" + tgl.substring(5, 7) + "-" + tgl.substring(0, 4);
+    }
+    
+    public String setTglJamSmc(Date tgljam) {
+        return new SimpleDateFormat("dd-MM-yyyy HH:mm:ss").format(tgljam);
+    }
+    
+    public void reportTempSmc(String reportName, String reportDirName, String judul, Map reportParams) {
+        reportSmc(reportName, reportDirName, judul, reportParams, "select * from temporary where temp37 = ? order by temporary.no", akses.getalamatip());
+    }
+    
+    public void reportSmc(String reportName, String reportDirName, String judul, Map reportParams, String sql, String... values) {
+        try (PreparedStatement ps = connect.prepareStatement(sql)) {
+            for (int i = 0; i < values.length; i++) {
+                ps.setString(i + 1, values[i]);
+            }
+            JasperViewer jasperViewer = new JasperViewer(JasperFillManager.fillReport("./" + reportDirName + "/" + reportName, reportParams, new JRResultSetDataSource(ps.executeQuery())), false);
+            jasperViewer.setTitle(judul);
+            Dimension screen = Toolkit.getDefaultToolkit().getScreenSize();
+            jasperViewer.setSize(screen.width - 50, screen.height - 50);
+            jasperViewer.setModalExclusionType(ModalExclusionType.TOOLKIT_EXCLUDE);
+            jasperViewer.setLocationRelativeTo(null);
+            jasperViewer.setVisible(true);
+        } catch (Exception e) {
+            System.out.println("Notif : " + e);
+            JOptionPane.showMessageDialog(null, "Report can't view because : " + e);
+        }
+    }
+    
+    public void reportSmc(String reportName, String reportDirName, String judul, Map reportParams) {
+        try {
+            JasperViewer jv = new JasperViewer(JasperFillManager.fillReport("./" + reportDirName + "/" + reportName, reportParams, connect), false);
+            jv.setTitle(judul);
+            Dimension screen = Toolkit.getDefaultToolkit().getScreenSize();
+            jv.setSize(screen.width - 50, screen.height - 50);
+            jv.setModalExclusionType(ModalExclusionType.TOOLKIT_EXCLUDE);
+            jv.setLocationRelativeTo(null);
+            jv.setVisible(true);
+        } catch (Exception e) {
+            System.out.println("Notif : " + e);
+            JOptionPane.showMessageDialog(null, "Report can't view because : " + e);
+        }
+    }
+    
+    public String capitalizeSmc(String judul) {
+        return judul.substring(0, 1).toUpperCase() + judul.substring(1);
+    }
+    
+    public String terbilangSmc(double nilai) {
+        if (nilai < 12) {
+            return nominal2[(int) nilai];
+        }
+
+        if (nilai >= 12 && nilai <= 19) {
+            return nominal2[(int) nilai % 10] + " belas ";
+        }
+
+        if (nilai >= 20 && nilai <= 99) {
+            return nominal2[(int) nilai / 10] + " puluh " + nominal2[(int) nilai % 10];
+        }
+
+        if (nilai >= 100 && nilai <= 199) {
+            return "seratus " + terbilangSmc(nilai % 100);
+        }
+
+        if (nilai >= 200 && nilai <= 999) {
+            return nominal2[(int) nilai / 100] + " ratus " + terbilangSmc(nilai % 100);
+        }
+
+        if (nilai >= 1_000 && nilai <= 1_999) {
+            return "seribu " + terbilangSmc(nilai % 1_000);
+        }
+
+        if (nilai >= 2_000 && nilai <= 999_999) {
+            return terbilangSmc((int) nilai / 1_000) + " ribu " + terbilangSmc(nilai % 1_000);
+        }
+
+        if (nilai >= 1_000_000 && nilai <= 999_999_999) {
+            return terbilangSmc((int) nilai / 1_000_000) + " juta " + terbilangSmc(nilai % 1_000_000);
+        }
+        
+        return "";
+    }
+    
+    public void panggilUrlSmc(String app, String url) {
+        if (app == null || app.isBlank()) {
+            panggilUrl2(url);
+        } else if (app.equalsIgnoreCase("disable")) {
+            //
+        } else {
+            String os = System.getProperty("os.name").toLowerCase();
+            String realpath = "";
+            try {
+                if (os.contains("windows")) {
+                    if (app.equalsIgnoreCase("chrome")) {
+                        realpath = "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe";
+                    } else if (app.equalsIgnoreCase("firefox")) {
+                        realpath = "C:\\Program Files\\Mozilla Firefox\\firefox.exe";
+                    } else if (app.equalsIgnoreCase("msedge")) {
+                        realpath = "C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe";
+                    } else {
+                        realpath = app;
+                    }
+                    if (realpath.contains(".lnk")) {
+                        ProcessBuilder pb = new ProcessBuilder(new String[]{"cmd", "/c", realpath, url});
+                        pb.start();
+                    } else {
+                        Runtime.getRuntime().exec(realpath + " " + url);
+                    }
+                } else if (os.contains("mac") || os.contains("nix") || os.contains("nux")) {
+                    System.out.println("Notif : Sistem operasi belum disupport, menggunakan proses default...");
+                    panggilUrl2(url);
+                }
+            } catch (Exception e) {
+                System.out.println("Notif : " + e);
+            }
+        }
+    }
+    
+    public void cleanupTextSmc(JTextComponent txt) {
+        try {
+            CharsetEncoder latin1Encoder = Charset.forName("ISO-8859-1").newEncoder();
+            CharsetDecoder latin1Decoder = Charset.forName("ISO-8859-1").newDecoder();
+            latin1Encoder.onMalformedInput(CodingErrorAction.REPLACE);
+            latin1Encoder.onUnmappableCharacter(CodingErrorAction.REPLACE);
+            latin1Encoder.replaceWith(" ".getBytes());
+            
+            ByteBuffer input = latin1Encoder.encode(CharBuffer.wrap(txt.getText()));
+            
+            CharBuffer cb = latin1Decoder.decode(input);
+            txt.setText(cb.toString().trim());
+            
+            latin1Encoder.flush(input);
+            latin1Decoder.flush(cb);
+        } catch (Exception e) {
+            System.out.println("Notif : " + e);
+        }
+    }
+    
+    public boolean exists(String path) {
+        try {
+            return new File(path).isFile();
+        } catch (Exception e) {
+            System.out.println("Notif : " + e);
+            return false;
+        }
+    }
+    
+    public String joinSmc(String separator, String... values) {
+        if (values.length == 0) {
+            return "";
+        }
+        
+        String base = values[0];
+        
+        for (int i = 1; i < values.length; i++) {
+            base = base.concat(separator + values[i]);
+        }
+        
+        return base;
+    }
 
     public void autoNomer(DefaultTableModel tabMode,String strAwal,Integer pnj,javax.swing.JTextField teks){        
         s=Integer.toString(tabMode.getRowCount()+1);
